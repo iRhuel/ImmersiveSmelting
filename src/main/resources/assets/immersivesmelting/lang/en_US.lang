@@ -1,0 +1,12 @@
+< en_US.lang - English localization file for Immersive Engineering >
+
+<ITEMS>
+
+<BLOCKS>
+tile.cupola_furnace.name=Cupola Furnace
+
+<CONTAINERS>
+container.cupola_furnace.name=Cupola Furnace
+
+<OTHER>
+itemGroup.immersivesmelting=Immersive Smelting
