@@ -1,6 +1,7 @@
 package irhuel.immersivesmelting.common.blocks;
 
 import irhuel.immersivesmelting.ISContent;
+import irhuel.immersivesmelting.common.tileentities.TileMBSlave;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.tileentity.TileEntity;
@@ -18,7 +19,7 @@ public class BlockMBSlave extends BlockContainer {
 
     @Override
     public TileEntity createNewTileEntity(World worldIn, int meta) {
-        return null;
+        return new TileMBSlave();
     }
 
     @Override

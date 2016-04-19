@@ -4,7 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
-import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -20,16 +20,18 @@ import net.minecraft.util.*;
 
 import java.util.Arrays;
 
-public class TileCupolaFurnace extends TileEntity implements ITickable, IInventory {
+public class TileCupolaFurnace extends TileEntity implements ITickable, ISidedInventory {
 
     // index 0-3 = input, 4 = fuel, 5 = output
     private ItemStack[] furnaceItemStacks = new ItemStack[6];
 
-    private boolean isMaster;
+    private boolean firstRun = true;
     private int burnTimeRemaining;  // number of ticks remaining on current piece of fuel
     private int fuelBurnTime;  // initial fuel value of the currently burning fuel
     private int[] itemCookTime = new int[4];   // current cook time for input slots
 
+    private final int[] INPUTSLOTS = new int[] {0, 1, 2, 3, 4};
+    private final int[] OUTPUTSLOTS = new int[] {5};
     private static final int COOK_TIME_FOR_COMPLETION = 400;  // the number of ticks to smelt
 
     @Override
@@ -93,16 +95,33 @@ public class TileCupolaFurnace extends TileEntity implements ITickable, IInvento
             case 0:
             case 1:
             case 2:
-            case 3:
-                if (isItemValidForInputSlot(stack) && furnaceItemStacks[index] == null)
-                    return true;
-            case 4:
-                return isItemFuel(stack);
-            case 5:
-                return false;
-            default:
-                return false;
+            case 3: return isItemValidForInputSlot(stack) && furnaceItemStacks[index] == null;
+            case 4: return isItemValidForFuelSlot(stack);
+            default: return false;
         }
+    }
+
+    @Override
+    public int[] getSlotsForFace(EnumFacing side) {
+        return side == EnumFacing.DOWN ? OUTPUTSLOTS : INPUTSLOTS;
+    }
+
+    @Override
+    public boolean canInsertItem(int index, ItemStack itemStackIn, EnumFacing direction) {
+        return this.isItemValidForSlot(index, itemStackIn);
+//        switch (index) {
+//            case 0:
+//            case 1:
+//            case 2:
+//            case 3: return isItemValidForInputSlot(itemStackIn) && furnaceItemStacks[index] == null;
+//            case 4: return isItemValidForFuelSlot(itemStackIn);
+//            default: return false;
+//        }
+    }
+
+    @Override
+    public boolean canExtractItem(int index, ItemStack stack, EnumFacing direction) {
+        return index == 5;
     }
 
     public boolean isItemValidForInputSlot(ItemStack stack) {
@@ -119,15 +138,20 @@ public class TileCupolaFurnace extends TileEntity implements ITickable, IInvento
 
     @Override
     public void update() {
-        for (int i = 0; i < 4; i++) {
-            ItemStack input = furnaceItemStacks[i];
-            if (input != null && canSmelt(i)) {
-                startBurnFuel();
-                cookItem(i);
+        if (checkMBForm()) {
+            if (firstRun) {
+                setupStructure();
+                firstRun = false;
             }
-            else {
-                if (input == null) itemCookTime[i] = 0;
-                if (itemCookTime[i] > 0 && !isBurning()) itemCookTime[i]--;
+            for (int i = 0; i < 4; i++) {
+                ItemStack input = furnaceItemStacks[i];
+                if (input != null && canSmelt(i)) {
+                    startBurnFuel();
+                    cookItem(i);
+                } else {
+                    if (input == null) itemCookTime[i] = 0;
+                    if (itemCookTime[i] > 0 && !isBurning()) itemCookTime[i]--;
+                }
             }
         }
         if (isBurning()) burnTimeRemaining--;
@@ -217,6 +241,23 @@ public class TileCupolaFurnace extends TileEntity implements ITickable, IInvento
     public double getCookProgressRatio(int index) {
         double ratio = (double) itemCookTime[index] / (double) COOK_TIME_FOR_COMPLETION;
         return MathHelper.clamp_double(ratio, 0.0, 1.0);
+    }
+
+    public boolean checkMBForm() {
+        int count = 0;
+        for (int z = -1; z < 3; z++) {
+            TileEntity tile = worldObj.getTileEntity(pos.add(0, z, 0));
+            if (tile instanceof TileMBSlave) count++;
+        }
+        return count == 3;
+    }
+
+    public void setupStructure() {
+        for (int z = -1; z < 3; z++) {
+            TileEntity tile = worldObj.getTileEntity(pos.add(0, z, 0));
+            if (tile instanceof TileMBSlave)
+                ((TileMBSlave) tile).setMaster(this);
+        }
     }
 
     @Override
